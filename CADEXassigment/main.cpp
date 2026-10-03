@@ -2,6 +2,8 @@
 #include <cmath>
 #include <vector>
 #include <random>
+#include <stdexcept>
+#include <algorithm>
 
 
 #define PI 3.14159
@@ -36,6 +38,11 @@ public:
 		if (radius < 0) throw std::invalid_argument("Радиус не может быть отрицательным");
 	}
 
+	double getRadius() {
+		return radius;
+	}
+
+
 	Point3D getPoint(double t) {
 		double x = radius * std::cos(t);
 		double y = radius * std::sin(t);
@@ -53,12 +60,12 @@ public:
 	}
 };
 
-class Elipse : public Curve {
+class Ellipse : public Curve {
 private:
 	double radiusX;
 	double radiusY;
 public:
-	Elipse(double rx, double ry) : radiusX(rx), radiusY(ry) {
+	Ellipse(double rx, double ry) : radiusX(rx), radiusY(ry) {
 		if (radiusX < 0 || radiusY < 0) throw std::invalid_argument("Неверные радиусы (<0)");
 	}
 
@@ -107,6 +114,8 @@ public:
 
 
 int main() {
+	setlocale(LC_ALL, "Russian");
+
 	std::vector<Curve*> curves;
 	std::vector<Circle*> circles;
 
@@ -128,7 +137,7 @@ int main() {
 		else if (type == 1) {
 			double rx = modelParam(gen);
 			double ry = modelParam(gen);
-			curves.push_back(new Elipse(rx, ry));
+			curves.push_back(new Ellipse(rx, ry));
 		}
 		else if (type == 2) {
 			double r = modelParam(gen);
@@ -139,6 +148,7 @@ int main() {
 
 	double t = PI / 4;
 
+	std::cout << "Координаты всех фигур" << std::endl;
 	for (const auto& curve : curves) {
 		Circle* circlePtr = dynamic_cast<Circle*>(curve);
 
@@ -150,11 +160,22 @@ int main() {
 		curve->getDerivative(t).print();
 	}
 
-	// сортировка Circle по умолчанию
-	for (const auto& c : circles) {
+	// сортировка массива circle по радиусу
+	std::sort(circles.begin(), circles.end(), [](Circle* a, Circle* b) {
+		return a->getRadius() < b->getRadius();
+	});
 
+	double sum_radius = 0;
+
+	std::cout << "\n\n\nРадиусы Circle из 2 массива:\n";
+	for (auto c : circles) {
+		std::cout << c->getRadius() << std::endl;
+		sum_radius += c->getRadius();
 	}
 
+	std::cout << "\n\n\nСумма всех радиусов из 2 массива: " << sum_radius << std::endl;
+
+	
 	for (auto curve : curves) {
 		delete curve;
 	}

@@ -2,6 +2,7 @@
 
 #define PI 3.14159
 
+
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -49,7 +50,7 @@ private:
 	double radius;
 public:
 	Circle(double r) : radius(r) {
-		if (radius < 0) throw std::invalid_argument("Ðàäèóñ íå ìîæåò áûòü îòðèöàòåëüíûì");
+		if (radius < 0) throw std::invalid_argument("ÃÃ Ã¤Ã¨Ã³Ã± Ã­Ã¥ Ã¬Ã®Ã¦Ã¥Ã² Ã¡Ã»Ã²Ã¼ Ã®Ã²Ã°Ã¨Ã¶Ã Ã²Ã¥Ã«Ã¼Ã­Ã»Ã¬");
 	}
 
 	double getRadius() {
@@ -80,7 +81,7 @@ private:
 	double radiusY;
 public:
 	Ellipse(double rx, double ry) : radiusX(rx), radiusY(ry) {
-		if (radiusX < 0 || radiusY < 0) throw std::invalid_argument("Íåâåðíûå ðàäèóñû (<0)");
+		if (radiusX < 0 || radiusY < 0) throw std::invalid_argument("ÃÃ¥Ã¢Ã¥Ã°Ã­Ã»Ã¥ Ã°Ã Ã¤Ã¨Ã³Ã±Ã» (<0)");
 	}
 
 	Point3D getPoint(double t) {
@@ -106,7 +107,7 @@ private:
 	double step;
 public:
 	Helix(double r, double s) : radius(r), step(s) {
-		if (radius < 0) throw std::invalid_argument("Ðàäèóñ ñïèðàëè äîëæåí áûòü > 0");
+		if (radius < 0) throw std::invalid_argument("ÃÃ Ã¤Ã¨Ã³Ã± Ã±Ã¯Ã¨Ã°Ã Ã«Ã¨ Ã¤Ã®Ã«Ã¦Ã¥Ã­ Ã¡Ã»Ã²Ã¼ > 0");
 	}
 
 	Point3D getPoint(double t) {
@@ -162,7 +163,7 @@ int main() {
 
 	double t = PI / 4;
 
-	std::cout << "Êîîðäèíàòû âñåõ ôèãóð" << std::endl;
+	std::cout << "ÃŠÃ®Ã®Ã°Ã¤Ã¨Ã­Ã Ã²Ã» Ã¢Ã±Ã¥Ãµ Ã´Ã¨Ã£Ã³Ã°" << std::endl;
 	for (const auto& curve : curves) {
 		Circle* circlePtr = dynamic_cast<Circle*>(curve);
 
@@ -174,20 +175,20 @@ int main() {
 		curve->getDerivative(t).print();
 	}
 
-	// ñîðòèðîâêà ìàññèâà circle ïî ðàäèóñó
+	// Ã±Ã®Ã°Ã²Ã¨Ã°Ã®Ã¢ÃªÃ  Ã¬Ã Ã±Ã±Ã¨Ã¢Ã  circle Ã¯Ã® Ã°Ã Ã¤Ã¨Ã³Ã±Ã³
 	std::sort(circles.begin(), circles.end(), [](Circle* a, Circle* b) {
 		return a->getRadius() < b->getRadius();
 	});
 
 	double sum_radius = 0;
 
-	std::cout << "\n\n\nÐàäèóñû Circle èç 2 ìàññèâà:\n";
+	std::cout << "\n\n\nÃÃ Ã¤Ã¨Ã³Ã±Ã» Circle Ã¨Ã§ 2 Ã¬Ã Ã±Ã±Ã¨Ã¢Ã :\n";
 	for (auto c : circles) {
 		std::cout << c->getRadius() << std::endl;
 		sum_radius += c->getRadius();
 	}
 
-	std::cout << "\n\n\nÑóììà âñåõ ðàäèóñîâ èç 2 ìàññèâà: " << sum_radius << std::endl;
+	std::cout << "\n\n\nÃ‘Ã³Ã¬Ã¬Ã  Ã¢Ã±Ã¥Ãµ Ã°Ã Ã¤Ã¨Ã³Ã±Ã®Ã¢ Ã¨Ã§ 2 Ã¬Ã Ã±Ã±Ã¨Ã¢Ã : " << sum_radius << std::endl;
 
 	// =====================================================================================
 	// =====================================================================================

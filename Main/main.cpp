@@ -9,21 +9,11 @@
 #include "curves.h"
 
 int main() {
-	setlocale(LC_ALL, "Russian");
+	// Отключаем русскую локализацию, чтобы консоль тоже была на английском
+	setlocale(LC_ALL, "C");
 
 	std::vector<std::shared_ptr<Curve>> curves;
 	std::vector<std::shared_ptr<Circle>> circles;
-
-	// --- ВВОД УГЛОВ НАКЛОНА ---
-	double inputRotX = 0, inputRotY = 0, inputRotZ = 0;
-	std::cout << "Введите угол наклона всех фигур по осям X, Y, Z в градусах (через пробел): ";
-	std::cin >> inputRotX >> inputRotY >> inputRotZ;
-
-	// Перевод градусов в радианы
-	double rx = inputRotX * PI / 180.0;
-	double ry = inputRotY * PI / 180.0;
-	double rz = inputRotZ * PI / 180.0;
-	// ---------------------------
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -38,7 +28,6 @@ int main() {
 
 	for (int i = 0; i < totalObjects; i++) {
 		int type = model(gen);
-
 		std::shared_ptr<Curve> newCurve;
 
 		if (type == 0) {
@@ -46,9 +35,9 @@ int main() {
 			newCurve = std::make_shared<Circle>(r);
 		}
 		else if (type == 1) {
-			double rx_param = modelParam(gen);
-			double ry_param = modelParam(gen);
-			newCurve = std::make_shared<Ellipse>(rx_param, ry_param);
+			double rx = modelParam(gen);
+			double ry = modelParam(gen);
+			newCurve = std::make_shared<Ellipse>(rx, ry);
 		}
 		else if (type == 2) {
 			double r = modelParam(gen);
@@ -62,22 +51,19 @@ int main() {
 			layoutRadius * std::sin(layoutAngle),
 			cz);
 
-		// Устанавливаем наклон, введенный пользователем, вместо случайного
-		newCurve->setRotation(rx, ry, rz);
+		newCurve->setRotation(angleParam(gen), angleParam(gen), angleParam(gen));
 
 		curves.push_back(newCurve);
 	}
 
 	double t = PI / 4;
 
-	std::cout << "\nКоординаты всех фигур (t = PI/4):" << std::endl;
+	std::cout << "Coordinates of all shapes:" << std::endl;
 	for (const auto& curve : curves) {
 		auto circlePtr = std::dynamic_pointer_cast<Circle>(curve);
-
 		if (circlePtr != nullptr) {
 			circles.push_back(circlePtr);
 		}
-
 		curve->getPoint(t).print();
 		curve->getDerivative(t).print();
 	}
@@ -87,16 +73,14 @@ int main() {
 		});
 
 	double sum_radius = 0;
-
-	std::cout << "\nРадиусы Circle из 2 массива:\n";
+	std::cout << "\n\n\nRadiuses of Circle objects from the second array:\n";
 	for (const auto& c : circles) {
 		std::cout << c->getRadius() << std::endl;
 		sum_radius += c->getRadius();
 	}
 
-	std::cout << "\nСумма всех радиусов из 2 массива: " << sum_radius << std::endl;
+	std::cout << "\n\n\nSum of all radiuses from the second array: " << sum_radius << std::endl;
 
-	// Запуск графического окна
 	renderCurves(curves);
 
 	return 0;

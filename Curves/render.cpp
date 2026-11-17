@@ -47,33 +47,47 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 	int addingType = -1;
 	std::vector<InputField> addInputs;
 
+	// Переменная для прокрутки списков
+	int listScroll = 0;
+
 	while (!WindowShouldClose()) {
 		// --- ПЕРЕКЛЮЧЕНИЕ МЕНЮ ---
-		// (Блокируем открытие/закрытие меню, если мы сейчас вводим параметры)
 		if (addingType == -1) {
 			if (IsKeyPressed(KEY_C)) {
 				if (activeMenu == 1) { activeMenu = 0; DisableCursor(); }
-				else { activeMenu = 1; EnableCursor(); }
+				else { activeMenu = 1; EnableCursor(); listScroll = 0; }
 			}
 			if (IsKeyPressed(KEY_G)) {
 				if (activeMenu == 2) { activeMenu = 0; DisableCursor(); }
-				else { activeMenu = 2; EnableCursor(); }
+				else { activeMenu = 2; EnableCursor(); listScroll = 0; }
 			}
 		}
 
 		Vector2 mousePoint = GetMousePosition();
 		bool mouseClicked = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
+		int wheelMove = (int)GetMouseWheelMove();
+
+		// --- СКРОЛЛИНГ МЕНЮ КОЛЕСИКОМ МЫШИ ---
+		if (activeMenu != 0 && addingType == -1 && wheelMove != 0) {
+			listScroll -= wheelMove;
+			if (listScroll < 0) listScroll = 0;
+			int maxScroll = (int)myCurves.size() - 1;
+			if (listScroll > maxScroll) listScroll = maxScroll >= 0 ? maxScroll : 0;
+		}
 
 		// --- ЛОГИКА МЕНЮ СОЗДАНИЯ И УДАЛЕНИЯ (Кнопка C) ---
 		if (activeMenu == 1) {
 			if (addingType == -1) {
-				// Удаление фигур
-				for (size_t i = 0; i < myCurves.size(); i++) {
-					if (30 + i * 30 > 400) break;
-					Rectangle xBtn = { 240, 30.0f + i * 30.0f, 20, 20 };
+				// Удаление фигур (с учетом прокрутки)
+				for (size_t i = listScroll; i < myCurves.size(); i++) {
+					int row = i - listScroll;
+					if (30 + row * 30 > 400) break;
+					Rectangle xBtn = { 240, 30.0f + row * 30.0f, 20, 20 };
 					if (mouseClicked && CheckCollisionPointRec(mousePoint, xBtn)) {
 						myCurves.erase(myCurves.begin() + i);
 						showFigure.erase(showFigure.begin() + i);
+						// Корректируем скролл, если удалили последний элемент
+						if (listScroll > 0 && listScroll >= myCurves.size()) listScroll--;
 						break;
 					}
 				}
@@ -173,6 +187,10 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 							newCurve->setRotation(rx * PI / 180.0, ry * PI / 180.0, rz * PI / 180.0);
 							myCurves.push_back(newCurve);
 							showFigure.push_back(true);
+
+							// Автоматически прокручиваем список вниз, чтобы увидеть новую фигуру
+							int maxScroll = (int)myCurves.size() - 1;
+							listScroll = maxScroll >= 0 ? maxScroll : 0;
 						}
 					}
 					catch (...) {}
@@ -186,9 +204,10 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 		}
 		// --- ЛОГИКА МЕНЮ ВИДИМОСТИ (Кнопка G) ---
 		else if (activeMenu == 2) {
-			for (size_t i = 0; i < myCurves.size(); i++) {
-				if (60 + i * 30 > 400) break;
-				Rectangle toggleBtn = { 190, 60.0f + i * 30.0f, 40, 20 };
+			for (size_t i = listScroll; i < myCurves.size(); i++) {
+				int row = i - listScroll;
+				if (60 + row * 30 > 380) break;
+				Rectangle toggleBtn = { 190, 60.0f + row * 30.0f, 40, 20 };
 				if (mouseClicked && CheckCollisionPointRec(mousePoint, toggleBtn)) {
 					showFigure[i] = !showFigure[i];
 				}
@@ -202,7 +221,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 			if (angleX > 1.4f) angleX = 1.4f;
 			if (angleX < -1.4f) angleX = -1.4f;
 
-			dist -= GetMouseWheelMove() * 5.0f;
+			dist -= wheelMove * 5.0f; // Перенесли зум камеры сюда
 			if (dist < 20.0f) dist = 20.0f;
 			if (dist > 400.0f) dist = 400.0f;
 
@@ -277,8 +296,8 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 		}
 
 		DrawFPS(10, 10);
-		DrawText("Mouse: rotate | Wheel: zoom | WASD: move | Space/Ctrl: up/down | Esc: exit", 10, 40, 18, LIGHTGRAY);
-		DrawText("C: Open Manager Menu | G: Open Visibility Menu", 10, 60, 18, GREEN);
+		DrawText("Mouse: rotate/zoom | WASD: move | Space/Ctrl: up/down", 10, 40, 18, LIGHTGRAY);
+		DrawText("C: Add/Remove Menu | G: Visibility Menu | Scroll menus with mouse wheel", 10, 60, 18, GREEN);
 
 		// --- ОТРИСОВКА ИНТЕРФЕЙСА ---
 		if (activeMenu != 0) {
@@ -287,8 +306,9 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 
 		if (activeMenu == 1) {
 			DrawRectangleRoundedLines({ 20, 20, 250, 400 }, 0.1f, 10, MAROON);
-			for (size_t i = 0; i < myCurves.size(); i++) {
-				if (30 + i * 30 > 380) { DrawText("...", 30, 30 + i * 30, 20, DARKGRAY); break; }
+			for (size_t i = listScroll; i < myCurves.size(); i++) {
+				int row = i - listScroll;
+				if (30 + row * 30 > 380) { DrawText("...", 30, 30 + row * 30, 20, DARKGRAY); break; }
 
 				std::string name = "Unknown";
 				Color textColor = GRAY;
@@ -296,8 +316,12 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 				else if (std::dynamic_pointer_cast<Ellipse>(myCurves[i])) { name = "Ellipse"; textColor = SKYBLUE; }
 				else if (std::dynamic_pointer_cast<Circle>(myCurves[i])) { name = "Circle"; textColor = SKYBLUE; }
 
-				DrawText(name.c_str(), 35, 30 + i * 30, 20, textColor);
-				DrawText("X", 240, 30 + i * 30, 20, SKYBLUE);
+				// Выводим порядковый номер для удобства
+				char buf[64];
+				snprintf(buf, sizeof(buf), "[%d] %s", (int)(i + 1), name.c_str());
+
+				DrawText(buf, 35, 30 + row * 30, 20, textColor);
+				DrawText("X", 240, 30 + row * 30, 20, SKYBLUE);
 			}
 
 			DrawRectangleRoundedLines({ 20, 430, 250, 40 }, 0.2f, 10, DARKBLUE);
@@ -333,25 +357,24 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 			DrawRectangleRoundedLines({ 20, 20, 250, 400 }, 0.1f, 10, LIME);
 			DrawText("Visibility Panel", 30, 25, 20, LIME);
 
-			for (size_t i = 0; i < myCurves.size(); i++) {
-				if (60 + i * 30 > 380) { DrawText("...", 30, 60 + i * 30, 20, DARKGRAY); break; }
+			for (size_t i = listScroll; i < myCurves.size(); i++) {
+				int row = i - listScroll;
+				if (60 + row * 30 > 380) { DrawText("...", 30, 60 + row * 30, 20, DARKGRAY); break; }
 
 				std::string name = "Unknown";
 				if (std::dynamic_pointer_cast<Helix>(myCurves[i])) name = "Helix";
 				else if (std::dynamic_pointer_cast<Ellipse>(myCurves[i])) name = "Ellipse";
 				else if (std::dynamic_pointer_cast<Circle>(myCurves[i])) name = "Circle";
 
-				// Пронумерованное название (например: [1] Helix)
 				char buf[64];
 				snprintf(buf, sizeof(buf), "[%d] %s", (int)(i + 1), name.c_str());
 
 				Color textColor = showFigure[i] ? WHITE : GRAY;
-				DrawText(buf, 30, 60 + i * 30, 18, textColor);
+				DrawText(buf, 30, 60 + row * 30, 18, textColor);
 
-				// Кнопка ON/OFF
-				Rectangle toggleBtn = { 190, 60.0f + i * 30.0f, 40, 20 };
+				Rectangle toggleBtn = { 190, 60.0f + row * 30.0f, 40, 20 };
 				DrawRectangleRec(toggleBtn, showFigure[i] ? GREEN : DARKGRAY);
-				DrawText(showFigure[i] ? "ON" : "OFF", 195, 62 + i * 30, 14, BLACK);
+				DrawText(showFigure[i] ? "ON" : "OFF", 195, 62 + row * 30, 14, BLACK);
 			}
 		}
 

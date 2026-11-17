@@ -15,10 +15,11 @@ const Color COL_ELLIPSE = { 80, 200, 120, 255 };
 const Color COL_HELIX = { 80, 150, 240, 255 };
 const Color COL_CROSSHAIR = { 255, 255, 255, 150 };
 
-enum UIMode {
-	UI_NONE,
-	UI_LIST,  // Режим выбора фигуры из списка
-	UI_EDIT   // Режим ввода наклона для выбранной фигуры
+struct InputField {
+	Rectangle bounds;
+	std::string text;
+	std::string label;
+	bool active;
 };
 
 void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
@@ -38,69 +39,163 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 	float dist = 100.0f;
 	float sens = 0.003f;
 
-	// Массив для хранения видимости каждой из 12 фигур
-	std::vector<bool> showFigure(curves.size(), true);
+	std::vector<std::shared_ptr<Curve>> myCurves = curves;
+	std::vector<bool> showFigure(myCurves.size(), true);
 
-	UIMode currentUI = UI_NONE;
-	int selectedIndex = 0;
-	std::string inputText = "";
+	// 0 - закрыто, 1 - Меню Создания (C), 2 - Меню Видимости (G)
+	int activeMenu = 0;
+	int addingType = -1;
+	std::vector<InputField> addInputs;
 
 	while (!WindowShouldClose()) {
-		// Открытие/закрытие меню по кнопке C (если мы не находимся в режиме ввода текста)
-		if (IsKeyPressed(KEY_C) && currentUI != UI_EDIT) {
-			if (currentUI == UI_NONE) {
-				currentUI = UI_LIST;
-				EnableCursor();
+		// --- ПЕРЕКЛЮЧЕНИЕ МЕНЮ ---
+		// (Блокируем открытие/закрытие меню, если мы сейчас вводим параметры)
+		if (addingType == -1) {
+			if (IsKeyPressed(KEY_C)) {
+				if (activeMenu == 1) { activeMenu = 0; DisableCursor(); }
+				else { activeMenu = 1; EnableCursor(); }
+			}
+			if (IsKeyPressed(KEY_G)) {
+				if (activeMenu == 2) { activeMenu = 0; DisableCursor(); }
+				else { activeMenu = 2; EnableCursor(); }
+			}
+		}
+
+		Vector2 mousePoint = GetMousePosition();
+		bool mouseClicked = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
+
+		// --- ЛОГИКА МЕНЮ СОЗДАНИЯ И УДАЛЕНИЯ (Кнопка C) ---
+		if (activeMenu == 1) {
+			if (addingType == -1) {
+				// Удаление фигур
+				for (size_t i = 0; i < myCurves.size(); i++) {
+					if (30 + i * 30 > 400) break;
+					Rectangle xBtn = { 240, 30.0f + i * 30.0f, 20, 20 };
+					if (mouseClicked && CheckCollisionPointRec(mousePoint, xBtn)) {
+						myCurves.erase(myCurves.begin() + i);
+						showFigure.erase(showFigure.begin() + i);
+						break;
+					}
+				}
+
+				// Кнопки добавления
+				Rectangle btnHelix = { 20, 430, 250, 40 };
+				Rectangle btnEllipse = { 20, 480, 250, 40 };
+				Rectangle btnCircle = { 20, 530, 250, 40 };
+
+				if (mouseClicked) {
+					if (CheckCollisionPointRec(mousePoint, btnHelix)) addingType = 0;
+					else if (CheckCollisionPointRec(mousePoint, btnEllipse)) addingType = 1;
+					else if (CheckCollisionPointRec(mousePoint, btnCircle)) addingType = 2;
+
+					if (addingType != -1) {
+						addInputs.clear();
+						std::vector<std::string> labels;
+						if (addingType == 0) labels = { "R", "Step", "CX", "CY", "CZ", "RotX", "RotY", "RotZ" };
+						else if (addingType == 1) labels = { "RadX", "RadY", "CX", "CY", "CZ", "RotX", "RotY", "RotZ" };
+						else if (addingType == 2) labels = { "R", "CX", "CY", "CZ", "RotX", "RotY", "RotZ" };
+
+						float startX = 300, startY = 150;
+						for (size_t i = 0; i < labels.size(); i++) {
+							InputField f;
+							f.label = labels[i];
+							f.text = "";
+							f.active = (i == 0);
+							int row = i / 5;
+							int col = i % 5;
+							f.bounds = { startX + 20 + col * 80, startY + 80 + row * 60, 70, 30 };
+							addInputs.push_back(f);
+						}
+					}
+				}
 			}
 			else {
-				currentUI = UI_NONE;
-				DisableCursor();
-			}
-		}
-
-		if (currentUI == UI_LIST) {
-			if (IsKeyPressed(KEY_UP) && selectedIndex > 0) selectedIndex--;
-			if (IsKeyPressed(KEY_DOWN) && selectedIndex < (int)curves.size() - 1) selectedIndex++;
-
-			if (IsKeyPressed(KEY_BACKSPACE)) {
-				curves[selectedIndex]->setRotation(0.0, 0.0, 0.0);
-			}
-
-			if (IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ENTER)) {
-				currentUI = UI_EDIT;
-				inputText = "";
-			}
-		}
-		else if (currentUI == UI_EDIT) {
-			int key = GetCharPressed();
-			while (key > 0) {
-				if ((key >= '0' && key <= '9') || key == ' ' || key == '-' || key == '.') {
-					inputText += (char)key;
+				// Окно ввода параметров
+				if (mouseClicked) {
+					for (auto& field : addInputs) {
+						field.active = CheckCollisionPointRec(mousePoint, field.bounds);
+					}
 				}
-				key = GetCharPressed();
-			}
 
-			if (IsKeyPressed(KEY_BACKSPACE) && !inputText.empty()) {
-				inputText.pop_back();
-			}
-
-			if (IsKeyPressed(KEY_ENTER)) {
-				std::stringstream ss(inputText);
-				float rx = 0, ry = 0, rz = 0;
-				if (ss >> rx >> ry >> rz) {
-					curves[selectedIndex]->setRotation(rx * PI / 180.0, ry * PI / 180.0, rz * PI / 180.0);
+				if (IsKeyPressed(KEY_TAB)) {
+					for (size_t i = 0; i < addInputs.size(); i++) {
+						if (addInputs[i].active) {
+							addInputs[i].active = false;
+							addInputs[(i + 1) % addInputs.size()].active = true;
+							break;
+						}
+					}
 				}
-				currentUI = UI_LIST;
-				inputText = "";
-			}
 
-			if (IsKeyPressed(KEY_ESCAPE)) {
-				currentUI = UI_LIST;
-				inputText = "";
+				for (auto& field : addInputs) {
+					if (field.active) {
+						int key = GetCharPressed();
+						while (key > 0) {
+							if ((key >= '0' && key <= '9') || key == '.' || key == '-') {
+								field.text += (char)key;
+							}
+							key = GetCharPressed();
+						}
+						if (IsKeyPressed(KEY_BACKSPACE) && !field.text.empty()) {
+							field.text.pop_back();
+						}
+					}
+				}
+
+				if (IsKeyPressed(KEY_ENTER)) {
+					std::vector<float> vals;
+					for (auto& f : addInputs) {
+						float val = 0;
+						std::stringstream ss(f.text.empty() ? "0" : f.text);
+						ss >> val;
+						vals.push_back(val);
+					}
+
+					std::shared_ptr<Curve> newCurve;
+					float cx = 0, cy = 0, cz = 0, rx = 0, ry = 0, rz = 0;
+
+					try {
+						if (addingType == 0) {
+							newCurve = std::make_shared<Helix>(vals[0] <= 0 ? 1 : vals[0], vals[1]);
+							cx = vals[2]; cy = vals[3]; cz = vals[4]; rx = vals[5]; ry = vals[6]; rz = vals[7];
+						}
+						else if (addingType == 1) {
+							newCurve = std::make_shared<Ellipse>(vals[0] <= 0 ? 1 : vals[0], vals[1] <= 0 ? 1 : vals[1]);
+							cx = vals[2]; cy = vals[3]; cz = vals[4]; rx = vals[5]; ry = vals[6]; rz = vals[7];
+						}
+						else if (addingType == 2) {
+							newCurve = std::make_shared<Circle>(vals[0] <= 0 ? 1 : vals[0]);
+							cx = vals[1]; cy = vals[2]; cz = vals[3]; rx = vals[4]; ry = vals[5]; rz = vals[6];
+						}
+
+						if (newCurve) {
+							newCurve->setCenter(cx, cy, cz);
+							newCurve->setRotation(rx * PI / 180.0, ry * PI / 180.0, rz * PI / 180.0);
+							myCurves.push_back(newCurve);
+							showFigure.push_back(true);
+						}
+					}
+					catch (...) {}
+					addingType = -1;
+				}
+
+				if (IsKeyPressed(KEY_ESCAPE)) {
+					addingType = -1;
+				}
 			}
 		}
+		// --- ЛОГИКА МЕНЮ ВИДИМОСТИ (Кнопка G) ---
+		else if (activeMenu == 2) {
+			for (size_t i = 0; i < myCurves.size(); i++) {
+				if (60 + i * 30 > 400) break;
+				Rectangle toggleBtn = { 190, 60.0f + i * 30.0f, 40, 20 };
+				if (mouseClicked && CheckCollisionPointRec(mousePoint, toggleBtn)) {
+					showFigure[i] = !showFigure[i];
+				}
+			}
+		}
+		// --- ЛОГИКА КАМЕРЫ ---
 		else {
-			// --- Управление камерой и видимостью фигур ---
 			Vector2 delta = GetMouseDelta();
 			angleY -= delta.x * sens;
 			angleX += delta.y * sens;
@@ -126,26 +221,13 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 			if (IsKeyDown(KEY_D)) { camera.target.x += right.x * speed;   camera.target.y += right.y * speed; }
 			if (IsKeyDown(KEY_SPACE))        camera.target.z += speed;
 			if (IsKeyDown(KEY_LEFT_CONTROL)) camera.target.z -= speed;
-
-			// Индивидуальное скрытие фигур (цифры 1-0, -, =)
-			if (curves.size() > 0 && IsKeyPressed(KEY_ONE))   showFigure[0] = !showFigure[0];
-			if (curves.size() > 1 && IsKeyPressed(KEY_TWO))   showFigure[1] = !showFigure[1];
-			if (curves.size() > 2 && IsKeyPressed(KEY_THREE)) showFigure[2] = !showFigure[2];
-			if (curves.size() > 3 && IsKeyPressed(KEY_FOUR))  showFigure[3] = !showFigure[3];
-			if (curves.size() > 4 && IsKeyPressed(KEY_FIVE))  showFigure[4] = !showFigure[4];
-			if (curves.size() > 5 && IsKeyPressed(KEY_SIX))   showFigure[5] = !showFigure[5];
-			if (curves.size() > 6 && IsKeyPressed(KEY_SEVEN)) showFigure[6] = !showFigure[6];
-			if (curves.size() > 7 && IsKeyPressed(KEY_EIGHT)) showFigure[7] = !showFigure[7];
-			if (curves.size() > 8 && IsKeyPressed(KEY_NINE))  showFigure[8] = !showFigure[8];
-			if (curves.size() > 9 && IsKeyPressed(KEY_ZERO))  showFigure[9] = !showFigure[9];
-			if (curves.size() > 10 && IsKeyPressed(KEY_MINUS)) showFigure[10] = !showFigure[10];
-			if (curves.size() > 11 && IsKeyPressed(KEY_EQUAL)) showFigure[11] = !showFigure[11];
 		}
 
 		camera.position.x = camera.target.x + dist * cosf(angleX) * cosf(angleY);
 		camera.position.y = camera.target.y + dist * cosf(angleX) * sinf(angleY);
 		camera.position.z = camera.target.z + dist * sinf(angleX);
 
+		// --- ОТРИСОВКА ---
 		BeginDrawing();
 		ClearBackground(COL_BG);
 		BeginMode3D(camera);
@@ -154,13 +236,11 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 		DrawLine3D({ 0,0,0 }, { 0,20,0 }, COL_AXIS_Y);
 		DrawLine3D({ 0,0,0 }, { 0,0,20 }, COL_AXIS_Z);
 
-		// Отрисовка с проверкой индивидуальной видимости
-		for (size_t i = 0; i < curves.size(); i++) {
-			if (!showFigure[i]) continue; // Пропускаем фигуру, если она выключена
+		for (size_t i = 0; i < myCurves.size(); i++) {
+			if (!showFigure[i]) continue; // Пропуск скрытых фигур
 
-			const auto& curve = curves[i];
+			const auto& curve = myCurves[i];
 			Color col = WHITE;
-
 			if (std::dynamic_pointer_cast<Circle>(curve)) col = COL_CIRCLE;
 			else if (std::dynamic_pointer_cast<Ellipse>(curve)) col = COL_ELLIPSE;
 			else if (std::dynamic_pointer_cast<Helix>(curve)) col = COL_HELIX;
@@ -189,7 +269,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 		DrawText("Y", (int)sy.x, (int)sy.y, 24, COL_AXIS_Y);
 		DrawText("Z", (int)sz.x, (int)sz.y, 24, COL_AXIS_Z);
 
-		if (currentUI == UI_NONE) {
+		if (activeMenu == 0) {
 			int cx = GetScreenWidth() / 2;
 			int cy = GetScreenHeight() / 2;
 			DrawCircle(cx, cy, 3, WHITE);
@@ -198,69 +278,81 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 
 		DrawFPS(10, 10);
 		DrawText("Mouse: rotate | Wheel: zoom | WASD: move | Space/Ctrl: up/down | Esc: exit", 10, 40, 18, LIGHTGRAY);
-		DrawText("1-0, -, = : toggle individual figures visibility", 10, 60, 18, LIGHTGRAY);
-		DrawText("C: manage individual figure rotations", 10, 80, 18, GREEN);
+		DrawText("C: Open Manager Menu | G: Open Visibility Menu", 10, 60, 18, GREEN);
 
-		if (currentUI != UI_NONE) {
-			DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.7f));
+		// --- ОТРИСОВКА ИНТЕРФЕЙСА ---
+		if (activeMenu != 0) {
+			DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.6f));
 		}
 
-		if (currentUI == UI_LIST) {
-			int panelW = 500;
-			int panelH = 450;
-			int panelX = GetScreenWidth() / 2 - panelW / 2;
-			int panelY = GetScreenHeight() / 2 - panelH / 2;
+		if (activeMenu == 1) {
+			DrawRectangleRoundedLines({ 20, 20, 250, 400 }, 0.1f, 10, MAROON);
+			for (size_t i = 0; i < myCurves.size(); i++) {
+				if (30 + i * 30 > 380) { DrawText("...", 30, 30 + i * 30, 20, DARKGRAY); break; }
 
-			DrawRectangle(panelX, panelY, panelW, panelH, RAYWHITE);
-			DrawRectangleLines(panelX, panelY, panelW, panelH, DARKGRAY);
+				std::string name = "Unknown";
+				Color textColor = GRAY;
+				if (std::dynamic_pointer_cast<Helix>(myCurves[i])) { name = "Helix"; textColor = SKYBLUE; }
+				else if (std::dynamic_pointer_cast<Ellipse>(myCurves[i])) { name = "Ellipse"; textColor = SKYBLUE; }
+				else if (std::dynamic_pointer_cast<Circle>(myCurves[i])) { name = "Circle"; textColor = SKYBLUE; }
 
-			DrawText("Figures and their Rotations (X Y Z)", panelX + 20, panelY + 20, 20, DARKGRAY);
-
-			int startY = panelY + 60;
-			for (int i = 0; i < (int)curves.size() && i < 12; i++) {
-				int itemY = startY + i * 26;
-				Color textColor = DARKGRAY;
-
-				if (i == selectedIndex) {
-					DrawRectangle(panelX + 10, itemY - 2, panelW - 20, 26, LIGHTGRAY);
-					textColor = BLACK;
-				}
-
-				std::string typeStr = "Unknown";
-				if (std::dynamic_pointer_cast<Circle>(curves[i])) typeStr = "Circle";
-				else if (std::dynamic_pointer_cast<Ellipse>(curves[i])) typeStr = "Ellipse";
-				else if (std::dynamic_pointer_cast<Helix>(curves[i])) typeStr = "Helix";
-
-				double rx = curves[i]->getRotX() * 180.0 / PI;
-				double ry = curves[i]->getRotY() * 180.0 / PI;
-				double rz = curves[i]->getRotZ() * 180.0 / PI;
-
-				char buf[128];
-				snprintf(buf, sizeof(buf), "[%d] %-8s: %.1f, %.1f, %.1f", i + 1, typeStr.c_str(), rx, ry, rz);
-				DrawText(buf, panelX + 20, itemY, 18, textColor);
+				DrawText(name.c_str(), 35, 30 + i * 30, 20, textColor);
+				DrawText("X", 240, 30 + i * 30, 20, SKYBLUE);
 			}
 
-			DrawText("UP/DOWN: Select Figure | ENTER / N: Edit Rotation", panelX + 10, panelY + panelH - 50, 14, GRAY);
-			DrawText("BACKSPACE: Reset to 0 | C: Close", panelX + 10, panelY + panelH - 25, 14, GRAY);
+			DrawRectangleRoundedLines({ 20, 430, 250, 40 }, 0.2f, 10, DARKBLUE);
+			DrawText("Add Helix", 95, 440, 20, ORANGE);
+
+			DrawRectangleRoundedLines({ 20, 480, 250, 40 }, 0.2f, 10, DARKBLUE);
+			DrawText("Add Ellipse", 90, 490, 20, ORANGE);
+
+			DrawRectangleRoundedLines({ 20, 530, 250, 40 }, 0.2f, 10, DARKBLUE);
+			DrawText("Add Circle", 95, 540, 20, ORANGE);
+
+			if (addingType != -1) {
+				float startX = 300, startY = 150;
+				Rectangle popup = { startX, startY, 440, 220 };
+				DrawRectangleRec(popup, RAYWHITE);
+				DrawRectangleRoundedLines(popup, 0.1f, 10, ORANGE);
+
+				DrawText("Create figure", startX + 20, startY + 20, 20, ORANGE);
+				DrawText("Enter parameters:", startX + 20, startY + 50, 16, DARKGRAY);
+
+				for (auto& f : addInputs) {
+					DrawRectangleLinesEx(f.bounds, 2, f.active ? RED : MAROON);
+					DrawText(f.label.c_str(), f.bounds.x, f.bounds.y - 15, 14, ORANGE);
+					DrawText(f.text.c_str(), f.bounds.x + 5, f.bounds.y + 5, 20, DARKGRAY);
+					if (f.active && ((int)(GetTime() * 2) % 2 == 0)) {
+						DrawText("_", f.bounds.x + 5 + MeasureText(f.text.c_str(), 20), f.bounds.y + 5, 20, RED);
+					}
+				}
+				DrawText("TAB: next field | ENTER: save | ESC: cancel", startX + 20, startY + 190, 14, GRAY);
+			}
 		}
-		else if (currentUI == UI_EDIT) {
-			int panelW = 400;
-			int panelH = 150;
-			int panelX = GetScreenWidth() / 2 - panelW / 2;
-			int panelY = GetScreenHeight() / 2 - panelH / 2;
+		else if (activeMenu == 2) {
+			DrawRectangleRoundedLines({ 20, 20, 250, 400 }, 0.1f, 10, LIME);
+			DrawText("Visibility Panel", 30, 25, 20, LIME);
 
-			DrawRectangle(panelX, panelY, panelW, panelH, RAYWHITE);
-			DrawRectangleLines(panelX, panelY, panelW, panelH, DARKGRAY);
+			for (size_t i = 0; i < myCurves.size(); i++) {
+				if (60 + i * 30 > 380) { DrawText("...", 30, 60 + i * 30, 20, DARKGRAY); break; }
 
-			char titleBuf[64];
-			snprintf(titleBuf, sizeof(titleBuf), "Set Rotation for Figure [%d]:", selectedIndex + 1);
-			DrawText(titleBuf, panelX + 20, panelY + 20, 20, DARKGRAY);
+				std::string name = "Unknown";
+				if (std::dynamic_pointer_cast<Helix>(myCurves[i])) name = "Helix";
+				else if (std::dynamic_pointer_cast<Ellipse>(myCurves[i])) name = "Ellipse";
+				else if (std::dynamic_pointer_cast<Circle>(myCurves[i])) name = "Circle";
 
-			std::string displayTxt = inputText;
-			if ((int)(GetTime() * 2) % 2 == 0) displayTxt += "_";
-			DrawText(displayTxt.c_str(), panelX + 20, panelY + 60, 30, MAROON);
+				// Пронумерованное название (например: [1] Helix)
+				char buf[64];
+				snprintf(buf, sizeof(buf), "[%d] %s", (int)(i + 1), name.c_str());
 
-			DrawText("ENTER: Save | ESC: Cancel", panelX + 20, panelY + panelH - 30, 16, GRAY);
+				Color textColor = showFigure[i] ? WHITE : GRAY;
+				DrawText(buf, 30, 60 + i * 30, 18, textColor);
+
+				// Кнопка ON/OFF
+				Rectangle toggleBtn = { 190, 60.0f + i * 30.0f, 40, 20 };
+				DrawRectangleRec(toggleBtn, showFigure[i] ? GREEN : DARKGRAY);
+				DrawText(showFigure[i] ? "ON" : "OFF", 195, 62 + i * 30, 14, BLACK);
+			}
 		}
 
 		EndDrawing();

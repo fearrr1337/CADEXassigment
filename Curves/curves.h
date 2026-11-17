@@ -1,14 +1,10 @@
 #pragma once
-
 #include <iostream>
 #include <memory>
 #include <vector>
 
 #define PI 3.14159
 
-// Экспорт/импорт для DLL:
-// при сборке самой DLL определён CURVES_EXPORTS -> dllexport,
-// при сборке exe, который её использует -> dllimport
 #ifdef CURVES_EXPORTS
 #define CURVES_API __declspec(dllexport)
 #else
@@ -29,14 +25,15 @@ class CURVES_API Curve {
 public:
 	virtual ~Curve() = default;
 
-	// центр фигуры (сдвиг из начала координат)
 	void setCenter(double cx, double cy, double cz);
-
-	// углы поворота вокруг осей X, Y, Z (в радианах)
 	void setRotation(double rx, double ry, double rz);
 
-	virtual Point3D getPoint(double t) = 0;
+	// ДОБАВЛЕНЫ ГЕТТЕРЫ ДЛЯ ЧТЕНИЯ НАКЛОНА В ИНТЕРФЕЙСЕ
+	double getRotX() const { return rotX; }
+	double getRotY() const { return rotY; }
+	double getRotZ() const { return rotZ; }
 
+	virtual Point3D getPoint(double t) = 0;
 	virtual Point3D getDerivative(double t) = 0;
 
 protected:
@@ -45,10 +42,7 @@ protected:
 	double rotY = 0.0;
 	double rotZ = 0.0;
 
-	// вращение + сдвиг (для точек)
 	Point3D transformPoint(const Point3D& p) const;
-
-	// только вращение (для производной: сдвиг на неё не влияет)
 	Point3D transformDir(const Point3D& d) const;
 };
 
@@ -57,11 +51,8 @@ private:
 	double radius;
 public:
 	Circle(double r);
-
 	double getRadius();
-
 	Point3D getPoint(double t) override;
-
 	Point3D getDerivative(double t) override;
 };
 
@@ -71,9 +62,7 @@ private:
 	double radiusY;
 public:
 	Ellipse(double rx, double ry);
-
 	Point3D getPoint(double t) override;
-
 	Point3D getDerivative(double t) override;
 };
 
@@ -83,12 +72,8 @@ private:
 	double step;
 public:
 	Helix(double r, double s);
-
 	Point3D getPoint(double t) override;
-
 	Point3D getDerivative(double t) override;
 };
 
-// визуализация кривых в окне raylib
 CURVES_API void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves);
-

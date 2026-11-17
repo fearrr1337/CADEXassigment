@@ -15,6 +15,12 @@ const Color COL_ELLIPSE = { 80, 200, 120, 255 };
 const Color COL_HELIX = { 80, 150, 240, 255 };
 const Color COL_CROSSHAIR = { 255, 255, 255, 150 };
 
+enum UIMode {
+	UI_NONE,
+	UI_LIST,  // Режим выбора фигуры из списка
+	UI_EDIT   // Режим ввода наклона для выбранной фигуры
+};
+
 void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 	SetConfigFlags(FLAG_FULLSCREEN_MODE | FLAG_MSAA_4X_HINT);
 	InitWindow(0, 0, "3D Curves");
@@ -32,28 +38,43 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 	float dist = 100.0f;
 	float sens = 0.003f;
 
-	bool showCircles = true;
-	bool showEllipses = true;
-	bool showHelixes = true;
+	// Массив для хранения видимости каждой из 12 фигур
+	std::vector<bool> showFigure(curves.size(), true);
 
-	bool isInputMode = false;
+	UIMode currentUI = UI_NONE;
+	int selectedIndex = 0;
 	std::string inputText = "";
 
 	while (!WindowShouldClose()) {
-		if (IsKeyPressed(KEY_C)) {
-			isInputMode = !isInputMode;
-			if (isInputMode) {
+		// Открытие/закрытие меню по кнопке C (если мы не находимся в режиме ввода текста)
+		if (IsKeyPressed(KEY_C) && currentUI != UI_EDIT) {
+			if (currentUI == UI_NONE) {
+				currentUI = UI_LIST;
 				EnableCursor();
 			}
 			else {
+				currentUI = UI_NONE;
 				DisableCursor();
 			}
 		}
 
-		if (isInputMode) {
+		if (currentUI == UI_LIST) {
+			if (IsKeyPressed(KEY_UP) && selectedIndex > 0) selectedIndex--;
+			if (IsKeyPressed(KEY_DOWN) && selectedIndex < (int)curves.size() - 1) selectedIndex++;
+
+			if (IsKeyPressed(KEY_BACKSPACE)) {
+				curves[selectedIndex]->setRotation(0.0, 0.0, 0.0);
+			}
+
+			if (IsKeyPressed(KEY_N) || IsKeyPressed(KEY_ENTER)) {
+				currentUI = UI_EDIT;
+				inputText = "";
+			}
+		}
+		else if (currentUI == UI_EDIT) {
 			int key = GetCharPressed();
 			while (key > 0) {
-				if ((key >= 32) && (key <= 125)) {
+				if ((key >= '0' && key <= '9') || key == ' ' || key == '-' || key == '.') {
 					inputText += (char)key;
 				}
 				key = GetCharPressed();
@@ -65,18 +86,21 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 
 			if (IsKeyPressed(KEY_ENTER)) {
 				std::stringstream ss(inputText);
-				double rx = 0, ry = 0, rz = 0;
+				float rx = 0, ry = 0, rz = 0;
 				if (ss >> rx >> ry >> rz) {
-					for (const auto& curve : curves) {
-						curve->setRotation(rx * PI / 180.0, ry * PI / 180.0, rz * PI / 180.0);
-					}
+					curves[selectedIndex]->setRotation(rx * PI / 180.0, ry * PI / 180.0, rz * PI / 180.0);
 				}
-				isInputMode = false;
+				currentUI = UI_LIST;
 				inputText = "";
-				DisableCursor();
+			}
+
+			if (IsKeyPressed(KEY_ESCAPE)) {
+				currentUI = UI_LIST;
+				inputText = "";
 			}
 		}
 		else {
+			// --- Управление камерой и видимостью фигур ---
 			Vector2 delta = GetMouseDelta();
 			angleY -= delta.x * sens;
 			angleX += delta.y * sens;
@@ -88,12 +112,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 			if (dist > 400.0f) dist = 400.0f;
 
 			float speed = 30.0f * GetFrameTime();
-
-			Vector3 forward = {
-				camera.target.x - camera.position.x,
-				camera.target.y - camera.position.y,
-				camera.target.z - camera.position.z
-			};
+			Vector3 forward = { camera.target.x - camera.position.x, camera.target.y - camera.position.y, camera.target.z - camera.position.z };
 			float flen = sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
 			if (flen > 0.001f) { forward.x /= flen; forward.y /= flen; forward.z /= flen; }
 
@@ -108,9 +127,19 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 			if (IsKeyDown(KEY_SPACE))        camera.target.z += speed;
 			if (IsKeyDown(KEY_LEFT_CONTROL)) camera.target.z -= speed;
 
-			if (IsKeyPressed(KEY_G)) showCircles = !showCircles;
-			if (IsKeyPressed(KEY_H)) showEllipses = !showEllipses;
-			if (IsKeyPressed(KEY_J)) showHelixes = !showHelixes;
+			// Индивидуальное скрытие фигур (цифры 1-0, -, =)
+			if (curves.size() > 0 && IsKeyPressed(KEY_ONE))   showFigure[0] = !showFigure[0];
+			if (curves.size() > 1 && IsKeyPressed(KEY_TWO))   showFigure[1] = !showFigure[1];
+			if (curves.size() > 2 && IsKeyPressed(KEY_THREE)) showFigure[2] = !showFigure[2];
+			if (curves.size() > 3 && IsKeyPressed(KEY_FOUR))  showFigure[3] = !showFigure[3];
+			if (curves.size() > 4 && IsKeyPressed(KEY_FIVE))  showFigure[4] = !showFigure[4];
+			if (curves.size() > 5 && IsKeyPressed(KEY_SIX))   showFigure[5] = !showFigure[5];
+			if (curves.size() > 6 && IsKeyPressed(KEY_SEVEN)) showFigure[6] = !showFigure[6];
+			if (curves.size() > 7 && IsKeyPressed(KEY_EIGHT)) showFigure[7] = !showFigure[7];
+			if (curves.size() > 8 && IsKeyPressed(KEY_NINE))  showFigure[8] = !showFigure[8];
+			if (curves.size() > 9 && IsKeyPressed(KEY_ZERO))  showFigure[9] = !showFigure[9];
+			if (curves.size() > 10 && IsKeyPressed(KEY_MINUS)) showFigure[10] = !showFigure[10];
+			if (curves.size() > 11 && IsKeyPressed(KEY_EQUAL)) showFigure[11] = !showFigure[11];
 		}
 
 		camera.position.x = camera.target.x + dist * cosf(angleX) * cosf(angleY);
@@ -125,20 +154,16 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 		DrawLine3D({ 0,0,0 }, { 0,20,0 }, COL_AXIS_Y);
 		DrawLine3D({ 0,0,0 }, { 0,0,20 }, COL_AXIS_Z);
 
-		for (const auto& curve : curves) {
+		// Отрисовка с проверкой индивидуальной видимости
+		for (size_t i = 0; i < curves.size(); i++) {
+			if (!showFigure[i]) continue; // Пропускаем фигуру, если она выключена
+
+			const auto& curve = curves[i];
 			Color col = WHITE;
-			if (std::dynamic_pointer_cast<Circle>(curve)) {
-				if (!showCircles) continue;
-				col = COL_CIRCLE;
-			}
-			else if (std::dynamic_pointer_cast<Ellipse>(curve)) {
-				if (!showEllipses) continue;
-				col = COL_ELLIPSE;
-			}
-			else if (std::dynamic_pointer_cast<Helix>(curve)) {
-				if (!showHelixes) continue;
-				col = COL_HELIX;
-			}
+
+			if (std::dynamic_pointer_cast<Circle>(curve)) col = COL_CIRCLE;
+			else if (std::dynamic_pointer_cast<Ellipse>(curve)) col = COL_ELLIPSE;
+			else if (std::dynamic_pointer_cast<Helix>(curve)) col = COL_HELIX;
 
 			double tEnd = std::dynamic_pointer_cast<Helix>(curve) ? 6 * PI : 2 * PI;
 			int steps = 200;
@@ -164,7 +189,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 		DrawText("Y", (int)sy.x, (int)sy.y, 24, COL_AXIS_Y);
 		DrawText("Z", (int)sz.x, (int)sz.y, 24, COL_AXIS_Z);
 
-		if (!isInputMode) {
+		if (currentUI == UI_NONE) {
 			int cx = GetScreenWidth() / 2;
 			int cy = GetScreenHeight() / 2;
 			DrawCircle(cx, cy, 3, WHITE);
@@ -173,21 +198,69 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 
 		DrawFPS(10, 10);
 		DrawText("Mouse: rotate | Wheel: zoom | WASD: move | Space/Ctrl: up/down | Esc: exit", 10, 40, 18, LIGHTGRAY);
-		DrawText("G: toggle Circles | H: toggle Ellipses | J: toggle Helixes", 10, 60, 18, LIGHTGRAY);
-		DrawText("C: set rotation parameters (UI)", 10, 80, 18, GREEN);
+		DrawText("1-0, -, = : toggle individual figures visibility", 10, 60, 18, LIGHTGRAY);
+		DrawText("C: manage individual figure rotations", 10, 80, 18, GREEN);
 
-		if (isInputMode) {
+		if (currentUI != UI_NONE) {
 			DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.7f));
-			DrawRectangle(GetScreenWidth() / 2 - 200, GetScreenHeight() / 2 - 50, 400, 100, RAYWHITE);
-			DrawRectangleLines(GetScreenWidth() / 2 - 200, GetScreenHeight() / 2 - 50, 400, 100, DARKGRAY);
+		}
 
-			DrawText("Enter rotation X Y Z (in degrees):", GetScreenWidth() / 2 - 180, GetScreenHeight() / 2 - 35, 20, DARKGRAY);
+		if (currentUI == UI_LIST) {
+			int panelW = 500;
+			int panelH = 450;
+			int panelX = GetScreenWidth() / 2 - panelW / 2;
+			int panelY = GetScreenHeight() / 2 - panelH / 2;
+
+			DrawRectangle(panelX, panelY, panelW, panelH, RAYWHITE);
+			DrawRectangleLines(panelX, panelY, panelW, panelH, DARKGRAY);
+
+			DrawText("Figures and their Rotations (X Y Z)", panelX + 20, panelY + 20, 20, DARKGRAY);
+
+			int startY = panelY + 60;
+			for (int i = 0; i < (int)curves.size() && i < 12; i++) {
+				int itemY = startY + i * 26;
+				Color textColor = DARKGRAY;
+
+				if (i == selectedIndex) {
+					DrawRectangle(panelX + 10, itemY - 2, panelW - 20, 26, LIGHTGRAY);
+					textColor = BLACK;
+				}
+
+				std::string typeStr = "Unknown";
+				if (std::dynamic_pointer_cast<Circle>(curves[i])) typeStr = "Circle";
+				else if (std::dynamic_pointer_cast<Ellipse>(curves[i])) typeStr = "Ellipse";
+				else if (std::dynamic_pointer_cast<Helix>(curves[i])) typeStr = "Helix";
+
+				double rx = curves[i]->getRotX() * 180.0 / PI;
+				double ry = curves[i]->getRotY() * 180.0 / PI;
+				double rz = curves[i]->getRotZ() * 180.0 / PI;
+
+				char buf[128];
+				snprintf(buf, sizeof(buf), "[%d] %-8s: %.1f, %.1f, %.1f", i + 1, typeStr.c_str(), rx, ry, rz);
+				DrawText(buf, panelX + 20, itemY, 18, textColor);
+			}
+
+			DrawText("UP/DOWN: Select Figure | ENTER / N: Edit Rotation", panelX + 10, panelY + panelH - 50, 14, GRAY);
+			DrawText("BACKSPACE: Reset to 0 | C: Close", panelX + 10, panelY + panelH - 25, 14, GRAY);
+		}
+		else if (currentUI == UI_EDIT) {
+			int panelW = 400;
+			int panelH = 150;
+			int panelX = GetScreenWidth() / 2 - panelW / 2;
+			int panelY = GetScreenHeight() / 2 - panelH / 2;
+
+			DrawRectangle(panelX, panelY, panelW, panelH, RAYWHITE);
+			DrawRectangleLines(panelX, panelY, panelW, panelH, DARKGRAY);
+
+			char titleBuf[64];
+			snprintf(titleBuf, sizeof(titleBuf), "Set Rotation for Figure [%d]:", selectedIndex + 1);
+			DrawText(titleBuf, panelX + 20, panelY + 20, 20, DARKGRAY);
 
 			std::string displayTxt = inputText;
 			if ((int)(GetTime() * 2) % 2 == 0) displayTxt += "_";
-			DrawText(displayTxt.c_str(), GetScreenWidth() / 2 - 180, GetScreenHeight() / 2, 30, MAROON);
+			DrawText(displayTxt.c_str(), panelX + 20, panelY + 60, 30, MAROON);
 
-			DrawText("Press ENTER to apply", GetScreenWidth() / 2 - 180, GetScreenHeight() / 2 + 60, 16, LIGHTGRAY);
+			DrawText("ENTER: Save | ESC: Cancel", panelX + 20, panelY + panelH - 30, 16, GRAY);
 		}
 
 		EndDrawing();

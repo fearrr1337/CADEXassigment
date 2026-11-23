@@ -28,7 +28,7 @@ public:
 	void setCenter(double cx, double cy, double cz);
 	void setRotation(double rx, double ry, double rz);
 
-	// ДОБАВЛЕНЫ ГЕТТЕРЫ ДЛЯ ЧТЕНИЯ НАКЛОНА В ИНТЕРФЕЙСЕ
+
 	double getRotX() const { return rotX; }
 	double getRotY() const { return rotY; }
 	double getRotZ() const { return rotZ; }

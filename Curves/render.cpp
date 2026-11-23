@@ -42,7 +42,6 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 	std::vector<std::shared_ptr<Curve>> myCurves = curves;
 	std::vector<bool> showFigure(myCurves.size(), true);
 
-	// 0 - закрыто, 1 - Меню Создания (C), 2 - Меню Видимости (G)
 	int activeMenu = 0;
 	int addingType = -1;
 	std::vector<InputField> addInputs;
@@ -51,7 +50,6 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 	int listScroll = 0;
 
 	while (!WindowShouldClose()) {
-		// --- ПЕРЕКЛЮЧЕНИЕ МЕНЮ ---
 		if (addingType == -1) {
 			if (IsKeyPressed(KEY_C)) {
 				if (activeMenu == 1) { activeMenu = 0; DisableCursor(); }
@@ -67,7 +65,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 		bool mouseClicked = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
 		int wheelMove = (int)GetMouseWheelMove();
 
-		// --- СКРОЛЛИНГ МЕНЮ КОЛЕСИКОМ МЫШИ ---
+		// СКРОЛЛИНГ МЕНЮ КОЛЕСИКОМ МЫШИ 
 		if (activeMenu != 0 && addingType == -1 && wheelMove != 0) {
 			listScroll -= wheelMove;
 			if (listScroll < 0) listScroll = 0;
@@ -75,7 +73,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 			if (listScroll > maxScroll) listScroll = maxScroll >= 0 ? maxScroll : 0;
 		}
 
-		// --- ЛОГИКА МЕНЮ СОЗДАНИЯ И УДАЛЕНИЯ (Кнопка C) ---
+		// ЛОГИКА МЕНЮ СОЗДАНИЯ И УДАЛЕНИЯ 
 		if (activeMenu == 1) {
 			if (addingType == -1) {
 				// Удаление фигур (с учетом прокрутки)
@@ -202,7 +200,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 				}
 			}
 		}
-		// --- ЛОГИКА МЕНЮ ВИДИМОСТИ (Кнопка G) ---
+		// ЛОГИКА МЕНЮ ВИДИМОСТИ 
 		else if (activeMenu == 2) {
 			for (size_t i = listScroll; i < myCurves.size(); i++) {
 				int row = i - listScroll;
@@ -213,7 +211,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 				}
 			}
 		}
-		// --- ЛОГИКА КАМЕРЫ ---
+		// ЛОГИКА КАМЕРЫ 
 		else {
 			Vector2 delta = GetMouseDelta();
 			angleY -= delta.x * sens;
@@ -221,7 +219,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 			if (angleX > 1.4f) angleX = 1.4f;
 			if (angleX < -1.4f) angleX = -1.4f;
 
-			dist -= wheelMove * 5.0f; // Перенесли зум камеры сюда
+			dist -= wheelMove * 5.0f; 
 			if (dist < 20.0f) dist = 20.0f;
 			if (dist > 400.0f) dist = 400.0f;
 
@@ -246,7 +244,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 		camera.position.y = camera.target.y + dist * cosf(angleX) * sinf(angleY);
 		camera.position.z = camera.target.z + dist * sinf(angleX);
 
-		// --- ОТРИСОВКА ---
+		
 		BeginDrawing();
 		ClearBackground(COL_BG);
 		BeginMode3D(camera);
@@ -256,7 +254,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 		DrawLine3D({ 0,0,0 }, { 0,0,20 }, COL_AXIS_Z);
 
 		for (size_t i = 0; i < myCurves.size(); i++) {
-			if (!showFigure[i]) continue; // Пропуск скрытых фигур
+			if (!showFigure[i]) continue; 
 
 			const auto& curve = myCurves[i];
 			Color col = WHITE;
@@ -299,7 +297,6 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 		DrawText("Mouse: rotate/zoom | WASD: move | Space/Ctrl: up/down", 10, 40, 18, LIGHTGRAY);
 		DrawText("C: Add/Remove Menu | G: Visibility Menu | Scroll menus with mouse wheel", 10, 60, 18, GREEN);
 
-		// --- ОТРИСОВКА ИНТЕРФЕЙСА ---
 		if (activeMenu != 0) {
 			DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.6f));
 		}
@@ -316,7 +313,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 				else if (std::dynamic_pointer_cast<Ellipse>(myCurves[i])) { name = "Ellipse"; textColor = SKYBLUE; }
 				else if (std::dynamic_pointer_cast<Circle>(myCurves[i])) { name = "Circle"; textColor = SKYBLUE; }
 
-				// Выводим порядковый номер для удобства
+				
 				char buf[64];
 				snprintf(buf, sizeof(buf), "[%d] %s", (int)(i + 1), name.c_str());
 

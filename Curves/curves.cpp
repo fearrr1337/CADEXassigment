@@ -8,9 +8,6 @@ void Point3D::print() {
 	std::cout << "(" << x << ", " << y << ", " << z << ")" << std::endl;
 }
 
-// ---------------------------------------------------------------
-//  Базовый класс Curve: центр и матрица поворота
-// ---------------------------------------------------------------
 
 void Curve::setCenter(double cx, double cy, double cz) {
 	center = { cx, cy, cz };
@@ -28,17 +25,17 @@ static Point3D applyRotation(const Point3D& p, double rx, double ry, double rz) 
 	double cy = std::cos(ry), sy = std::sin(ry);
 	double cz = std::cos(rz), sz = std::sin(rz);
 
-	// вокруг оси X
+	
 	double x1 = p.x;
 	double y1 = cx * p.y - sx * p.z;
 	double z1 = sx * p.y + cx * p.z;
 
-	// вокруг оси Y
+	
 	double x2 = cy * x1 + sy * z1;
 	double y2 = y1;
 	double z2 = -sy * x1 + cy * z1;
 
-	// вокруг оси Z
+	
 	double x3 = cz * x2 - sz * y2;
 	double y3 = sz * x2 + cz * y2;
 	double z3 = z2;
@@ -55,9 +52,8 @@ Point3D Curve::transformDir(const Point3D& d) const {
 	return applyRotation(d, rotX, rotY, rotZ);
 }
 
-// ---------------------------------------------------------------
+
 //  Circle
-// ---------------------------------------------------------------
 
 Circle::Circle(double r) : radius(r) {
 	if (radius < 0) throw std::invalid_argument("Радиус не может быть отрицательным");
@@ -83,9 +79,7 @@ Point3D Circle::getDerivative(double t) {
 	return transformDir({ x, y, z });
 }
 
-// ---------------------------------------------------------------
 //  Ellipse
-// ---------------------------------------------------------------
 
 Ellipse::Ellipse(double rx, double ry) : radiusX(rx), radiusY(ry) {
 	if (radiusX < 0 || radiusY < 0) throw std::invalid_argument("Неверные радиусы (<0)");
@@ -107,9 +101,7 @@ Point3D Ellipse::getDerivative(double t) {
 	return transformDir({ x, y, z });
 }
 
-// ---------------------------------------------------------------
 //  Helix
-// ---------------------------------------------------------------
 
 Helix::Helix(double r, double s) : radius(r), step(s) {
 	if (radius < 0) throw std::invalid_argument("Радиус спирали должен быть > 0");

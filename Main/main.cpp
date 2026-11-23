@@ -9,7 +9,7 @@
 #include "curves.h"
 
 int main() {
-	// Отключаем русскую локализацию, чтобы консоль тоже была на английском
+
 	setlocale(LC_ALL, "C");
 
 	std::vector<std::shared_ptr<Curve>> curves;

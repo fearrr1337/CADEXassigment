@@ -68,6 +68,8 @@ int main() {
 		curve->getDerivative(t).print();
 	}
 
+
+
 	std::sort(circles.begin(), circles.end(), [](const std::shared_ptr<Circle>& a, const std::shared_ptr<Circle>& b) {
 		return a->getRadius() < b->getRadius();
 		});

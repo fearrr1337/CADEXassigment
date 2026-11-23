@@ -378,5 +378,8 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 		EndDrawing();
 	}
 
+
+
+
 	CloseWindow();
 }

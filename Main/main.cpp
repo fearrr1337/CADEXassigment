@@ -45,6 +45,7 @@ int main() {
 			newCurve = std::make_shared<Helix>(r, s);
 		}
 
+		// Центры фигур равномерно разнесены по кольцу в плоскости XY.
 		double layoutAngle = 2.0 * PI * i / totalObjects;
 		double cz = (angleParam(gen) / (2.0 * PI) - 0.5) * 8.0;
 		newCurve->setCenter(layoutRadius * std::cos(layoutAngle),
@@ -60,6 +61,7 @@ int main() {
 
 	std::cout << "Coordinates of all shapes:" << std::endl;
 	for (const auto& curve : curves) {
+		// Собираем ссылки на окружности для сортировки по радиусу.
 		auto circlePtr = std::dynamic_pointer_cast<Circle>(curve);
 		if (circlePtr != nullptr) {
 			circles.push_back(circlePtr);

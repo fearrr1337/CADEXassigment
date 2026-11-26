@@ -26,6 +26,7 @@ public:
 	virtual ~Curve() = default;
 
 	void setCenter(double cx, double cy, double cz);
+	// Углы поворота задаются в радианах.
 	void setRotation(double rx, double ry, double rz);
 
 
@@ -69,7 +70,7 @@ public:
 class CURVES_API Helix : public Curve {
 private:
 	double radius;
-	double step;
+	double step; // Изменение высоты за один радиан.
 public:
 	Helix(double r, double s);
 	Point3D getPoint(double t) override;

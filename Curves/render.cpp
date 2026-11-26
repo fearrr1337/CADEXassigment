@@ -46,7 +46,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 	int addingType = -1;
 	std::vector<InputField> addInputs;
 
-	// Переменная для прокрутки списков
+	// Индекс первой видимой строки меню.
 	int listScroll = 0;
 
 	while (!WindowShouldClose()) {
@@ -65,7 +65,6 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 		bool mouseClicked = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
 		int wheelMove = (int)GetMouseWheelMove();
 
-		// СКРОЛЛИНГ МЕНЮ КОЛЕСИКОМ МЫШИ 
 		if (activeMenu != 0 && addingType == -1 && wheelMove != 0) {
 			listScroll -= wheelMove;
 			if (listScroll < 0) listScroll = 0;
@@ -73,10 +72,8 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 			if (listScroll > maxScroll) listScroll = maxScroll >= 0 ? maxScroll : 0;
 		}
 
-		// ЛОГИКА МЕНЮ СОЗДАНИЯ И УДАЛЕНИЯ 
 		if (activeMenu == 1) {
 			if (addingType == -1) {
-				// Удаление фигур (с учетом прокрутки)
 				for (size_t i = listScroll; i < myCurves.size(); i++) {
 					int row = i - listScroll;
 					if (30 + row * 30 > 400) break;
@@ -84,13 +81,12 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 					if (mouseClicked && CheckCollisionPointRec(mousePoint, xBtn)) {
 						myCurves.erase(myCurves.begin() + i);
 						showFigure.erase(showFigure.begin() + i);
-						// Корректируем скролл, если удалили последний элемент
+						// Если список закончился, показываем предыдущую строку.
 						if (listScroll > 0 && listScroll >= myCurves.size()) listScroll--;
 						break;
 					}
 				}
 
-				// Кнопки добавления
 				Rectangle btnHelix = { 20, 430, 250, 40 };
 				Rectangle btnEllipse = { 20, 480, 250, 40 };
 				Rectangle btnCircle = { 20, 530, 250, 40 };
@@ -122,7 +118,6 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 				}
 			}
 			else {
-				// Окно ввода параметров
 				if (mouseClicked) {
 					for (auto& field : addInputs) {
 						field.active = CheckCollisionPointRec(mousePoint, field.bounds);
@@ -182,11 +177,12 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 
 						if (newCurve) {
 							newCurve->setCenter(cx, cy, cz);
+							// В форме углы в градусах, а библиотека принимает радианы.
 							newCurve->setRotation(rx * PI / 180.0, ry * PI / 180.0, rz * PI / 180.0);
 							myCurves.push_back(newCurve);
 							showFigure.push_back(true);
 
-							// Автоматически прокручиваем список вниз, чтобы увидеть новую фигуру
+							// Прокручиваем список до новой фигуры.
 							int maxScroll = (int)myCurves.size() - 1;
 							listScroll = maxScroll >= 0 ? maxScroll : 0;
 						}
@@ -200,7 +196,6 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 				}
 			}
 		}
-		// ЛОГИКА МЕНЮ ВИДИМОСТИ 
 		else if (activeMenu == 2) {
 			for (size_t i = listScroll; i < myCurves.size(); i++) {
 				int row = i - listScroll;
@@ -211,7 +206,6 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 				}
 			}
 		}
-		// ЛОГИКА КАМЕРЫ 
 		else {
 			Vector2 delta = GetMouseDelta();
 			angleY -= delta.x * sens;
@@ -240,6 +234,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 			if (IsKeyDown(KEY_LEFT_CONTROL)) camera.target.z -= speed;
 		}
 
+		// Положение камеры задаётся углами и расстоянием до цели.
 		camera.position.x = camera.target.x + dist * cosf(angleX) * cosf(angleY);
 		camera.position.y = camera.target.y + dist * cosf(angleX) * sinf(angleY);
 		camera.position.z = camera.target.z + dist * sinf(angleX);
@@ -262,6 +257,7 @@ void renderCurves(const std::vector<std::shared_ptr<Curve>>& curves) {
 			else if (std::dynamic_pointer_cast<Ellipse>(curve)) col = COL_ELLIPSE;
 			else if (std::dynamic_pointer_cast<Helix>(curve)) col = COL_HELIX;
 
+			// Рисуем один оборот окружности и эллипса, три оборота спирали.
 			double tEnd = std::dynamic_pointer_cast<Helix>(curve) ? 6 * PI : 2 * PI;
 			int steps = 200;
 			Vector3 prev = { 0, 0, 0 };

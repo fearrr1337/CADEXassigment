@@ -19,7 +19,7 @@ void Curve::setRotation(double rx, double ry, double rz) {
 	rotZ = rz;
 }
 
-// Вращение точки: p' = Rz * Ry * Rx * p  (сначала X, потом Y, потом Z)
+// Поворачиваем вокруг осей X, Y и Z по очереди.
 static Point3D applyRotation(const Point3D& p, double rx, double ry, double rz) {
 	double cx = std::cos(rx), sx = std::sin(rx);
 	double cy = std::cos(ry), sy = std::sin(ry);
@@ -48,12 +48,11 @@ Point3D Curve::transformPoint(const Point3D& p) const {
 	return { r.x + center.x, r.y + center.y, r.z + center.z };
 }
 
+// Перенос кривой не меняет её производную.
 Point3D Curve::transformDir(const Point3D& d) const {
 	return applyRotation(d, rotX, rotY, rotZ);
 }
 
-
-//  Circle
 
 Circle::Circle(double r) : radius(r) {
 	if (radius < 0) throw std::invalid_argument("Радиус не может быть отрицательным");
@@ -79,8 +78,6 @@ Point3D Circle::getDerivative(double t) {
 	return transformDir({ x, y, z });
 }
 
-//  Ellipse
-
 Ellipse::Ellipse(double rx, double ry) : radiusX(rx), radiusY(ry) {
 	if (radiusX < 0 || radiusY < 0) throw std::invalid_argument("Неверные радиусы (<0)");
 }
@@ -101,8 +98,6 @@ Point3D Ellipse::getDerivative(double t) {
 	return transformDir({ x, y, z });
 }
 
-//  Helix
-
 Helix::Helix(double r, double s) : radius(r), step(s) {
 	if (radius < 0) throw std::invalid_argument("Радиус спирали должен быть > 0");
 }
@@ -110,7 +105,7 @@ Helix::Helix(double r, double s) : radius(r), step(s) {
 Point3D Helix::getPoint(double t) {
 	double x = radius * std::cos(t);
 	double y = radius * std::sin(t);
-	double z = t * step; // ИСПРАВЛЕНО: t * step вместо tstep
+	double z = t * step;
 
 	return transformPoint({ x, y, z });
 }
